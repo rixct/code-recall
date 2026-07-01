@@ -1,0 +1,133 @@
+/* CodeRecall — review modal styles. Uses Obsidian theme variables. */
+
+.coderecall-modal {
+	width: min(760px, 90vw);
+}
+
+.coderecall-modal .cr-meta {
+	display: flex;
+	gap: 0.75em;
+	align-items: center;
+	color: var(--text-muted);
+	font-size: 0.85em;
+	margin-bottom: 0.75em;
+}
+
+.coderecall-modal .cr-badge {
+	background: var(--background-modifier-border);
+	border-radius: 4px;
+	padding: 0.05em 0.5em;
+	text-transform: uppercase;
+	letter-spacing: 0.03em;
+}
+
+.coderecall-modal .cr-label {
+	color: var(--text-muted);
+	margin: 0.5em 0 0.25em;
+}
+
+.coderecall-modal .cr-template,
+.coderecall-modal .cr-reveal {
+	background: var(--code-background);
+	border-radius: 6px;
+	padding: 0.75em;
+	overflow-x: auto;
+	margin: 0 0 0.75em;
+}
+
+.coderecall-modal .cr-template code,
+.coderecall-modal .cr-reveal code {
+	font-family: var(--font-monospace);
+	white-space: pre;
+}
+
+.coderecall-modal .cr-input {
+	margin-bottom: 0.75em;
+}
+
+.coderecall-modal .cr-input label {
+	display: block;
+	font-family: var(--font-monospace);
+	color: var(--text-accent);
+	margin-bottom: 0.25em;
+}
+
+.coderecall-modal .cr-answer {
+	width: 100%;
+	font-family: var(--font-monospace);
+	font-size: 0.9em;
+	resize: vertical;
+	tab-size: 4;
+}
+
+.coderecall-modal .cr-results {
+	margin: 0.5em 0;
+}
+
+.coderecall-modal .cr-test {
+	border-left: 3px solid var(--background-modifier-border);
+	padding: 0.4em 0.6em;
+	margin-bottom: 0.4em;
+	border-radius: 0 4px 4px 0;
+	font-family: var(--font-monospace);
+	font-size: 0.85em;
+}
+
+.coderecall-modal .cr-test-head {
+	display: flex;
+	gap: 0.5em;
+	align-items: center;
+}
+
+.coderecall-modal .cr-pass {
+	border-left-color: var(--color-green);
+	background: rgba(var(--color-green-rgb), 0.08);
+}
+
+.coderecall-modal .cr-fail {
+	border-left-color: var(--color-red);
+	background: rgba(var(--color-red-rgb), 0.08);
+}
+
+.coderecall-modal .cr-mark {
+	font-weight: bold;
+}
+
+.coderecall-modal .cr-pass .cr-mark {
+	color: var(--color-green);
+}
+
+.coderecall-modal .cr-fail .cr-mark {
+	color: var(--color-red);
+}
+
+.coderecall-modal .cr-kv,
+.coderecall-modal .cr-err {
+	white-space: pre-wrap;
+	color: var(--text-muted);
+}
+
+.coderecall-modal .cr-err {
+	color: var(--color-red);
+}
+
+.coderecall-modal .cr-warn {
+	color: var(--text-warning, var(--color-orange));
+}
+
+.coderecall-modal .cr-summary {
+	font-weight: 600;
+}
+
+.coderecall-modal .cr-controls {
+	display: flex;
+	flex-wrap: wrap;
+	gap: 0.5em;
+	align-items: center;
+	margin-top: 1em;
+}
+
+.coderecall-modal .cr-verdict {
+	color: var(--text-muted);
+	margin-right: 0.25em;
+}

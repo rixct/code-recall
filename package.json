@@ -1,0 +1,38 @@
+{
+	"name": "coderecall",
+	"version": "0.0.1",
+	"description": "Anki + LeetCode inside Obsidian: cloze deletions in code with auto-graded active recall and spaced repetition.",
+	"main": "main.js",
+	"scripts": {
+		"dev": "node esbuild.config.mjs",
+		"build": "tsc -noEmit -skipLibCheck && node esbuild.config.mjs production",
+		"test": "vitest run",
+		"test:watch": "vitest",
+		"version": "node version-bump.mjs && git add manifest.json versions.json"
+	},
+	"keywords": [
+		"obsidian",
+		"spaced-repetition",
+		"anki",
+		"code",
+		"active-recall"
+	],
+	"author": "rixct",
+	"license": "MIT",
+	"dependencies": {
+		"JSCPP": "^2.0.9",
+		"yaml": "^2.4.0"
+	},
+	"devDependencies": {
+		"@types/node": "^20.11.0",
+		"builtin-modules": "^3.3.0",
+		"esbuild": "^0.20.0",
+		"obsidian": "^1.5.0",
+		"typescript": "^5.4.0",
+		"vitest": "^2.1.0"
+	},
+	"allowScripts": {
+		"esbuild@0.20.2": true,
+		"esbuild@0.21.5": true
+	}
+}

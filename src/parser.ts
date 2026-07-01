@@ -240,6 +240,17 @@ export function parseCardBlock(
 }
 
 /**
+ * Parse a single card from the body of one ```coderecall block (no fences).
+ * Used by the in-note code-block renderer.
+ */
+export function parseSingleCard(
+	source: string,
+	filePath = "",
+): { card?: Card; error?: CardParseError } {
+	return parseCardBlock({ body: source, lineStart: 0, offset: 0, endOffset: source.length }, filePath);
+}
+
+/**
  * Parse all CodeRecall cards out of a markdown document.
  * Malformed blocks are collected in `errors` rather than aborting the whole doc.
  */

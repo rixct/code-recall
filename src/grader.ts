@@ -3,7 +3,7 @@ import type { Card, CodeRunner, GradeOutcome, RunMode, TestResult } from "./type
 
 /** Default execution mode for a language when the card doesn't specify one. */
 export function defaultMode(lang: string): RunMode {
-	return ["c++", "cpp", "c"].includes(lang.toLowerCase()) ? "stdio" : "call";
+	return ["c++", "cpp", "c", "java"].includes(lang.toLowerCase()) ? "stdio" : "call";
 }
 
 /** Rebuild the full program by substituting the user's answers into the clozes. */

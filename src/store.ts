@@ -1,28 +1,28 @@
-import type { Plugin } from "obsidian";
 import { initialState } from "./scheduler";
 import type { ReviewState } from "./types";
 
-interface PersistShape {
-	version: number;
-	states: Record<string, ReviewState>;
-}
-
 /**
- * Persists per-card SM-2 state in the plugin's data.json
- * (via Obsidian's loadData/saveData). Keyed by the content-stable card id.
+ * Holds per-card SM-2 state, keyed by the content-stable card id. Persistence
+ * is delegated to a callback so the plugin can write states and settings into
+ * a single data.json object without either clobbering the other.
  */
 export class ReviewStore {
 	private states: Record<string, ReviewState> = {};
 
-	constructor(private readonly plugin: Plugin) {}
+	constructor(private readonly persist: () => Promise<void>) {}
 
-	async load(): Promise<void> {
-		const data = (await this.plugin.loadData()) as PersistShape | null;
-		this.states = data?.states ?? {};
+	/** Seed from loaded data. */
+	loadStates(states: Record<string, ReviewState> | undefined | null): void {
+		this.states = states ?? {};
+	}
+
+	/** The raw state map, for serialization by the plugin. */
+	serialize(): Record<string, ReviewState> {
+		return this.states;
 	}
 
 	async save(): Promise<void> {
-		await this.plugin.saveData({ version: 1, states: this.states } satisfies PersistShape);
+		await this.persist();
 	}
 
 	/** Current state for a card, or a fresh (due-now) state if never reviewed. */

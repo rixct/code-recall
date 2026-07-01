@@ -26,19 +26,71 @@
 	margin: 0.5em 0 0.25em;
 }
 
-.coderecall-modal .cr-template,
-.coderecall-modal .cr-reveal {
+.coderecall-modal .cr-code {
+	margin: 0 0 0.75em;
+}
+
+/* Works for both the plain <pre> and the Prism-highlighted output. */
+.coderecall-modal .cr-code pre {
+	margin: 0;
 	background: var(--code-background);
 	border-radius: 6px;
 	padding: 0.75em;
 	overflow-x: auto;
-	margin: 0 0 0.75em;
 }
 
-.coderecall-modal .cr-template code,
-.coderecall-modal .cr-reveal code {
+.coderecall-modal .cr-code code {
 	font-family: var(--font-monospace);
 	white-space: pre;
+}
+
+/* Hide Obsidian's copy-code button inside our rendered code blocks. */
+.coderecall-modal .copy-code-button,
+.coderecall-embed .copy-code-button {
+	display: none;
+}
+
+/* ── In-note ```coderecall card ───────────────────────────────────────────── */
+
+.coderecall-embed {
+	border: 1px solid var(--background-modifier-border);
+	border-radius: 8px;
+	padding: 0.6em 0.75em;
+	background: var(--background-secondary);
+}
+
+.coderecall-embed .cr-embed-head {
+	display: flex;
+	gap: 0.6em;
+	align-items: center;
+	margin-bottom: 0.5em;
+	font-size: 0.85em;
+	color: var(--text-muted);
+}
+
+.coderecall-embed .cr-embed-name {
+	font-weight: 600;
+	color: var(--text-normal);
+}
+
+.coderecall-embed .cr-embed-meta {
+	margin-left: auto;
+}
+
+.coderecall-embed .cr-code {
+	margin: 0;
+}
+
+.coderecall-embed .cr-code pre {
+	margin: 0;
+	border-radius: 6px;
+	overflow-x: auto;
+}
+
+.coderecall-embed-error {
+	color: var(--color-red);
+	font-family: var(--font-monospace);
+	font-size: 0.85em;
 }
 
 .coderecall-modal .cr-input {

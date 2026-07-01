@@ -113,6 +113,16 @@ export interface CodeRunner {
 	run(req: RunRequest): Promise<RawRun>;
 }
 
+/** Options that configure how native (compiler-backed) runners behave. */
+export interface RunnerOptions {
+	/** Allow running C++/Java via locally-installed toolchains. */
+	nativeExecution: boolean;
+	/** C++ compiler command (`""`/`auto` → detect g++ then clang++). */
+	cppCompiler?: string;
+	/** Java launcher command (default `java`). */
+	javaPath?: string;
+}
+
 /** Outcome of one test case after comparison. */
 export interface TestResult {
 	input: string;

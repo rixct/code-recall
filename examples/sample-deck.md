@@ -69,30 +69,62 @@ tests:
     out: "[1, 2]"
 ```
 
-## Sum of an array (C++)
+## Sorted unique numbers (C++, full STL)
 
-C++ uses **stdin/stdout** tests: `in` is piped to the program, `out` is compared
-to what it prints. Supported: core C++ + iostream/cstdio/cmath/cstring/cctype —
-**no STL** (vector/map/string).
+C++ and Java use **stdin/stdout** tests: `in` is piped to the program, `out` is
+compared to what it prints. With **Native execution** on (Settings → CodeRecall),
+C++ is compiled with your local **g++/clang++** — full STL works.
 
 ```coderecall
 lang: c++
-name: Sum of an array (C++)
+name: Sorted unique (C++)
 mode: stdio
 ---
 #include <iostream>
+#include <set>
 using namespace std;
 int main() {
     int n;
     cin >> n;
-    long sum = 0;
+    set<int> s;
     for (int i = 0; i < n; i++) {
         int x;
         cin >> x;
-        {{c1::sum += x;}}
+        {{c1::s.insert(x);}}
     }
-    cout << sum << endl;
+    for (int x : s) cout << x << " ";
+    cout << endl;
     return 0;
+}
+---
+tests:
+  - in: "5\n3 1 2 3 1"
+    out: "1 2 3"
+  - in: "4\n9 9 4 4"
+    out: "4 9"
+```
+
+## Sum of an array (Java)
+
+Java runs via the JDK's single-file mode (`java Main.java`) — needs a **JDK 11+**
+installed and Native execution enabled.
+
+```coderecall
+lang: java
+name: Sum of an array (Java)
+mode: stdio
+---
+import java.util.*;
+public class Main {
+    public static void main(String[] args) {
+        Scanner sc = new Scanner(System.in);
+        int n = sc.nextInt();
+        long sum = 0;
+        for (int i = 0; i < n; i++) {
+            {{c1::sum += sc.nextInt();}}
+        }
+        System.out.println(sum);
+    }
 }
 ---
 tests:

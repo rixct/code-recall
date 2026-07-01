@@ -1,9 +1,10 @@
-import { App, Modal, Notice } from "obsidian";
+import { Component, MarkdownRenderer, Modal, Notice } from "obsidian";
 import { gradeAnswers } from "../grader";
+import { codeFenceBlock } from "../highlight";
 import { getRunner, isSupportedLang } from "../runner";
 import { isPyodideReady } from "../runner/pyodide";
 import { review } from "../scheduler";
-import type { ReviewStore } from "../store";
+import type CodeRecallPlugin from "../main";
 import type { Card, GradeOutcome } from "../types";
 
 /**
@@ -17,27 +18,40 @@ export class ReviewModal extends Modal {
 	private reviewed = 0;
 	private answers: string[] = [];
 	private outcome: GradeOutcome | null = null;
+	/** Owns markdown-render children so they unload when the modal closes. */
+	private readonly renderScope = new Component();
 
 	constructor(
-		app: App,
+		private readonly plugin: CodeRecallPlugin,
 		private readonly queue: Card[],
-		private readonly store: ReviewStore,
-		private readonly timeoutMs: number,
 	) {
-		super(app);
+		super(plugin.app);
 	}
 
 	onOpen(): void {
 		this.modalEl.addClass("coderecall-modal");
+		this.renderScope.load();
 		this.renderCard();
 	}
 
 	onClose(): void {
+		this.renderScope.unload();
 		this.contentEl.empty();
 	}
 
 	private get card(): Card | undefined {
 		return this.queue[this.index];
+	}
+
+	/** Render `code` into `container`, syntax-highlighted if the setting is on. */
+	private async renderCode(container: HTMLElement, code: string, lang: string): Promise<void> {
+		container.empty();
+		if (this.plugin.settings.syntaxHighlight) {
+			const md = codeFenceBlock(lang, code);
+			await MarkdownRenderer.render(this.plugin.app, md, container, "", this.renderScope);
+		} else {
+			container.createEl("pre").createEl("code", { text: code });
+		}
 	}
 
 	private renderCard(): void {
@@ -63,7 +77,8 @@ export class ReviewModal extends Modal {
 		}
 
 		contentEl.createEl("p", { cls: "cr-label", text: "Fill in the hidden part(s):" });
-		contentEl.createEl("pre", { cls: "cr-template" }).createEl("code", { text: card.template });
+		const codeBox = contentEl.createEl("div", { cls: "cr-code" });
+		void this.renderCode(codeBox, card.template, card.lang);
 
 		card.clozes.forEach((cloze, i) => {
 			const wrap = contentEl.createEl("div", { cls: "cr-input" });
@@ -79,8 +94,8 @@ export class ReviewModal extends Modal {
 		const results = contentEl.createEl("div", { cls: "cr-results" });
 		const controls = contentEl.createEl("div", { cls: "cr-controls" });
 
-		const checkBtn = controls.createEl("button", { text: "Run & check", cls: "mod-cta" });
 		const isPython = ["python", "py"].includes(card.lang.toLowerCase());
+		const checkBtn = controls.createEl("button", { text: "Run & check", cls: "mod-cta" });
 		checkBtn.addEventListener("click", async () => {
 			checkBtn.disabled = true;
 			checkBtn.setText("Running…");
@@ -88,7 +103,8 @@ export class ReviewModal extends Modal {
 				new Notice("CodeRecall: loading Python runtime — first run downloads Pyodide (~10 MB).", 6000);
 			}
 			try {
-				this.outcome = await gradeAnswers(card, this.answers, getRunner(card.lang), this.timeoutMs);
+				const runner = getRunner(card.lang, this.plugin.runnerOptions());
+				this.outcome = await gradeAnswers(card, this.answers, runner, this.plugin.execTimeoutMs);
 				this.renderResults(results, controls);
 			} catch (e) {
 				new Notice(`CodeRecall: run failed — ${String(e)}`);
@@ -102,7 +118,8 @@ export class ReviewModal extends Modal {
 		revealBtn.addEventListener("click", () => {
 			results.empty();
 			results.createEl("p", { cls: "cr-label", text: "Reference solution:" });
-			results.createEl("pre", { cls: "cr-reveal" }).createEl("code", { text: card.solution });
+			const box = results.createEl("div", { cls: "cr-code" });
+			void this.renderCode(box, card.solution, card.lang);
 			this.renderGradeButtons(controls, null);
 		});
 	}
@@ -112,7 +129,7 @@ export class ReviewModal extends Modal {
 		const outcome = this.outcome;
 		if (!outcome) return;
 
-		if (outcome.entry === null) {
+		if (outcome.entry === null && outcome.results.every((r) => r.error)) {
 			container.createEl("p", { cls: "cr-warn", text: outcome.results[0]?.error ?? "Could not run." });
 		}
 
@@ -143,10 +160,9 @@ export class ReviewModal extends Modal {
 	/** `autoQuality` null → manual self-grade; otherwise show the auto verdict + override. */
 	private renderGradeButtons(controls: HTMLElement, autoQuality: number | null): void {
 		controls.empty();
-		const grade = (q: number) => this.grade(q);
 		const btn = (label: string, q: number, cta = false) => {
 			const b = controls.createEl("button", { text: label, cls: cta ? "mod-cta" : "" });
-			b.addEventListener("click", () => grade(q));
+			b.addEventListener("click", () => this.grade(q));
 		};
 
 		if (autoQuality === null) {
@@ -168,8 +184,8 @@ export class ReviewModal extends Modal {
 		const card = this.card;
 		if (!card) return;
 		const now = Date.now();
-		this.store.set(card.id, review(this.store.get(card.id, now), quality, now));
-		await this.store.save();
+		this.plugin.store.set(card.id, review(this.plugin.store.get(card.id, now), quality, now));
+		await this.plugin.store.save();
 		this.reviewed += 1;
 		this.index += 1;
 		this.renderCard();
@@ -178,7 +194,7 @@ export class ReviewModal extends Modal {
 	private renderDone(): void {
 		const { contentEl } = this;
 		contentEl.empty();
-		contentEl.createEl("h2", { text: "Review complete 🎉" });
+		contentEl.createEl("h2", { text: "Review complete" });
 		contentEl.createEl("p", { text: `Reviewed ${this.reviewed} card(s).` });
 		const close = contentEl.createEl("button", { text: "Close", cls: "mod-cta" });
 		close.addEventListener("click", () => this.close());

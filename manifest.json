@@ -6,5 +6,5 @@
 	"description": "Anki + LeetCode inside Obsidian: cloze deletions in code with auto-graded active recall and spaced repetition.",
 	"author": "rixct",
 	"authorUrl": "https://github.com/rixct/code-recall",
-	"isDesktopOnly": false
+	"isDesktopOnly": true
 }

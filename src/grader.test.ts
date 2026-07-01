@@ -1,8 +1,23 @@
+import { execSync } from "child_process";
 import { describe, expect, it } from "vitest";
 import { buildProgram, compareOutputs, defaultMode, gradeAnswers, resultToQuality } from "./grader";
 import { cppRunner } from "./runner/cpp";
+import { makeNativeCppRunner } from "./runner/cppNative";
 import { localJsRunner } from "./runner/localJs";
 import type { Card } from "./types";
+
+/** Detect a C++ compiler so the native test can be skipped where absent. */
+const HAS_CPP = (() => {
+	for (const c of ["g++", "clang++"]) {
+		try {
+			execSync(`${c} --version`, { stdio: "ignore" });
+			return true;
+		} catch {
+			/* not available */
+		}
+	}
+	return false;
+})();
 
 function jsCard(solution: string, clozeContent: string, tests: Card["tests"]): Card {
 	const start = solution.indexOf(clozeContent);
@@ -150,4 +165,49 @@ int main() {
 		expect(out.results.every((r) => r.pass)).toBe(false);
 		expect(out.quality).toBe(1);
 	});
+});
+
+describe("gradeAnswers — native C++ with full STL", () => {
+	const solution = `#include <iostream>
+#include <vector>
+#include <algorithm>
+using namespace std;
+int main() {
+    int n; cin >> n;
+    vector<int> v(n);
+    for (auto& x : v) cin >> x;
+    sort(v.begin(), v.end());
+    for (int x : v) cout << x << " ";
+    cout << endl;
+    return 0;
+}`;
+	const clozeContent = "sort(v.begin(), v.end());";
+	const start = solution.indexOf(clozeContent);
+	const stlCard: Card = {
+		id: "stl",
+		filePath: "",
+		lang: "c++",
+		mode: "stdio",
+		code: solution,
+		solution,
+		template: solution.replace(clozeContent, "{{c1}}"),
+		clozes: [{ group: 1, content: clozeContent, start, end: start + clozeContent.length }],
+		groups: [1],
+		tests: [{ input: "5\n3 1 2 3 1", expected: "1 1 2 3 3" }],
+		lineStart: 0,
+		blockStart: 0,
+		blockEnd: 0,
+	};
+
+	it.skipIf(!HAS_CPP)(
+		"compiles STL (vector, algorithm) with a real compiler → pass",
+		async () => {
+			const runner = makeNativeCppRunner({ nativeExecution: true });
+			const out = await gradeAnswers(stlCard, [clozeContent], runner);
+			expect(out.results[0].error).toBeUndefined();
+			expect(out.results[0].pass).toBe(true);
+			expect(out.quality).toBe(5);
+		},
+		30000,
+	);
 });

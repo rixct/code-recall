@@ -69,16 +69,28 @@ YAML:
 - **`lang`** (required) — language id, e.g. `python`, `javascript`.
 - **`code`** (required) — a YAML block scalar (`code: |`) holding your code with
   one or more cloze deletions.
-- **`tests`** (optional) — a list of `{ in, out }` pairs (used from Phase 4 on).
-- **`name`** / **`id`** (optional) — a label and a stable id override.
-
+- **`tests`** (optional) — a list of `{ in, out }` pairs.
+- **`name`** / **`entry`** / **`id`** (optional) — label, entry-function override,
+  stable id override.
 - **`mode`** (optional) — `call` (default for JS/Python: invoke the entry
-  function with JSON args, compare its return) or `stdio` (default for C++: pipe
-  `in` to stdin, compare stdout). See the C++ card in the sample deck.
+  function with JSON args, compare its return) or `stdio` (default for C++/Java:
+  pipe `in` to stdin, compare stdout).
 
-Languages: **JavaScript** (Web Worker, offline), **Python** (Pyodide/WASM,
-downloads once), **C++** (JSCPP — a JS interpreter, offline; core C++ +
-iostream/cstdio/cmath/cstring/cctype, **no STL** containers).
+The recommended layout separates **header / code / tests** with `---` lines so
+the code is taken verbatim (indentation and tabs preserved); an inline
+`code: |` block scalar also works.
+
+Languages:
+
+- **JavaScript** — Web Worker, offline (`call` mode).
+- **Python** — Pyodide/WASM, downloads once (`call` mode).
+- **C++** — compiled with your local **g++/clang++** for full STL (`stdio` mode).
+  Without a compiler it falls back to the bundled JSCPP interpreter (no STL).
+- **Java** — runs via your local **JDK 11+** single-file mode (`stdio` mode).
+
+C++/Java use native toolchains via Node, so the plugin is **desktop-only**, and
+running them executes real programs on your machine — toggle **Native execution**
+in settings and only review notes you trust.
 
 Cloze syntax: `{{cN::hidden}}` hides `hidden` as group *N*. The first unescaped
 `}}` closes it. To put a literal `{{` or `}}` inside hidden content (an f-string,
@@ -86,13 +98,15 @@ a dict literal ending a line), escape it as `\{{` / `\}}`; every other backslash
 (`\n`, `\\`) is left as-is. Nested, empty and unclosed clozes are reported as
 errors.
 
+In reading and Live-Preview mode, a `coderecall` block renders as a compact card
+with the code section syntax-highlighted (per the card's `lang`). Highlighting
+can be toggled in **Settings → CodeRecall**.
+
 ## Status
 
-🚀 **MVP works.** The full loop is implemented: parse cards → hide code → type
-your answer → run it in a sandbox → auto-grade against tests → schedule with
-SM-2. JavaScript runs offline; Python runs via Pyodide (downloads once). See the
-[ROADMAP.md](ROADMAP.md) for what's next (syntax highlighting, vault-wide queue,
-stats, more languages).
+**MVP.** The full loop works: parse cards → hide code → type your answer → run it
+in a sandbox → auto-grade against tests → schedule with SM-2. See
+[ROADMAP.md](ROADMAP.md) for what's next (vault-wide "due today" queue, stats).
 
 ## Features
 
@@ -101,14 +115,49 @@ stats, more languages).
 - [x] Test-case system (input → expected output) with structural comparison
 - [x] SM-2 scheduler with per-card state persisted in `data.json`
 - [x] Review mode (modal with an input per cloze, "Run & check", auto-verdict)
-- [x] Multi-language: JavaScript (offline), Python (Pyodide), C++ (JSCPP, offline)
+- [x] Multi-language: JavaScript (offline), Python (Pyodide), C++ & Java (native compilers)
+- [x] Syntax highlighting for code (js/python/c++/java/…), toggleable in settings
 - [ ] Stats and a vault-wide "due today" queue
 
-## Language support (priority)
+## Supported languages
 
-1. **Python** — the most common language for algorithms/interviews.
-2. **JavaScript / TypeScript** — can run directly in the Obsidian runtime.
-3. Later — Go, Rust, Java on demand.
+| Language | Runner | Notes |
+|---|---|---|
+| JavaScript | Web Worker | offline, `call` mode |
+| Python | Pyodide (WASM) | downloads once on first run, `call` mode |
+| C++ | local g++/clang++ | full STL, `stdio` mode; JSCPP fallback (no STL) if no compiler |
+| Java | local JDK 11+ | `stdio` mode, single-file launcher |
+
+Syntax highlighting works for these plus any language Obsidian knows (TypeScript,
+Go, Rust, …), even if it can't be executed yet.
+
+## Review and grading
+
+Run **Review current note** (ribbon icon or command). Each due card shows the
+code with the hidden part blanked and a text box per cloze.
+
+- **Run & check** — substitutes your answer, runs every test in the sandbox, and
+  shows per-test pass/fail (expected vs got). This only *checks* — it does not
+  change the schedule.
+- **Reveal answer** — shows the reference solution and switches to manual grading.
+- After a run an auto-verdict appears: **Continue (all passed / partial / failed)**
+  applies quality 5 / 3 / 1; **Override: Again** (1) or **Override: Good** (4)
+  overrule it.
+- After Reveal, or when a card has no tests, you self-grade: **Again / Hard /
+  Good / Easy**.
+
+What each grade does to the SM-2 schedule (stored in `data.json`):
+
+| Button | Quality | Effect |
+|---|---|---|
+| Again | 1 | Lapse: streak resets, due again in **1 day**, lapse count +1 |
+| Hard | 3 | Pass, but **ease −0.14** → future intervals grow slower |
+| Good | 4 | Pass, ease unchanged |
+| Easy | 5 | Pass, **ease +0.10** → future intervals grow faster |
+
+A passing streak schedules the next review at **1 day → 6 days → previous ×
+ease** (ease starts at 2.5, floored at 1.3). "Continue" simply applies the
+auto-verdict's quality, so you usually never touch the schedule by hand.
 
 ## Security
 

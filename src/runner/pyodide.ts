@@ -92,8 +92,10 @@ function send(type: "init" | "run", code: string, timeoutMs: number): Promise<Ra
 			resolve(r);
 		};
 		const timer = setTimeout(() => {
-			resetWorker(); // kill a hung load or an infinite loop
+			// Resolve THIS request as timed out first, then tear down the worker
+			// (resetWorker would otherwise settle us with a generic reset error).
 			finish({ ok: false, timedOut: true, error: `Timed out after ${timeoutMs}ms` });
+			resetWorker(); // kill a hung load or an infinite loop
 		}, timeoutMs);
 		pending.set(id, (r) => finish(r as RawRun));
 		try {

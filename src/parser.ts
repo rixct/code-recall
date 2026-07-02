@@ -102,7 +102,7 @@ function normalizeTests(raw: unknown): { tests?: TestCase[]; error?: string } {
 	if (!Array.isArray(raw)) return { error: "'tests' must be a list" };
 	const tests: TestCase[] = [];
 	for (let k = 0; k < raw.length; k++) {
-		const t = raw[k];
+		const t: unknown = raw[k];
 		if (t === null || typeof t !== "object" || Array.isArray(t)) {
 			return { error: `Test #${k + 1} must be a mapping with 'in' and 'out'` };
 		}
@@ -156,7 +156,7 @@ export function parseCardBlock(
 	// Header YAML (tabs expanded so tab-indented headers still parse).
 	let header: Record<string, unknown>;
 	try {
-		const parsed = parseYaml(expandLeadingTabs(headerText));
+		const parsed: unknown = parseYaml(expandLeadingTabs(headerText));
 		if (parsed === null || typeof parsed !== "object" || Array.isArray(parsed)) {
 			return fail("coderecall block header is empty or not a YAML mapping");
 		}
@@ -200,7 +200,7 @@ export function parseCardBlock(
 		testsRaw = undefined;
 		if (testsText !== null && testsText.trim() !== "") {
 			try {
-				const parsed = parseYaml(expandLeadingTabs(testsText));
+				const parsed: unknown = parseYaml(expandLeadingTabs(testsText));
 				testsRaw = Array.isArray(parsed) ? parsed : (parsed as Record<string, unknown>)?.tests;
 			} catch (e) {
 				return fail(`Invalid YAML in tests section: ${(e as Error).message}`);
@@ -212,10 +212,12 @@ export function parseCardBlock(
 
 	const name = typeof header.name === "string" ? header.name : undefined;
 	const entry = typeof header.entry === "string" && header.entry.trim() !== "" ? header.entry.trim() : undefined;
-	if (header.mode !== undefined && header.mode !== "call" && header.mode !== "stdio") {
+	let mode: "call" | "stdio" | undefined;
+	if (header.mode === "call" || header.mode === "stdio") {
+		mode = header.mode;
+	} else if (header.mode !== undefined) {
 		return fail("'mode' must be either 'call' or 'stdio'");
 	}
-	const mode = header.mode as "call" | "stdio" | undefined;
 	const idOverride = typeof header.id === "string" && header.id.trim() !== "" ? header.id.trim() : null;
 	const id = idOverride ?? `cr_${cyrb53(`${filePath}::${lang}::${cloze.solution}`)}`;
 

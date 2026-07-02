@@ -87,17 +87,17 @@ function send(type: "init" | "run", code: string, timeoutMs: number): Promise<Ra
 		const finish = (r: RawRun) => {
 			if (settled) return;
 			settled = true;
-			clearTimeout(timer);
+			window.clearTimeout(timer);
 			pending.delete(id);
 			resolve(r);
 		};
-		const timer = setTimeout(() => {
+		const timer = window.setTimeout(() => {
 			// Resolve THIS request as timed out first, then tear down the worker
 			// (resetWorker would otherwise settle us with a generic reset error).
 			finish({ ok: false, timedOut: true, error: `Timed out after ${timeoutMs}ms` });
 			resetWorker(); // kill a hung load or an infinite loop
 		}, timeoutMs);
-		pending.set(id, (r) => finish(r as RawRun));
+		pending.set(id, (r) => finish(r));
 		try {
 			getWorker().postMessage({ id, type, code });
 		} catch (e) {

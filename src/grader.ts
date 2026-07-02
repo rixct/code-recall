@@ -24,8 +24,9 @@ export function buildProgram(card: Card, answers: string[]): string {
 function canonical(v: unknown): string {
 	if (Array.isArray(v)) return `[${v.map(canonical).join(",")}]`;
 	if (v && typeof v === "object") {
-		const keys = Object.keys(v as Record<string, unknown>).sort();
-		return `{${keys.map((k) => `${JSON.stringify(k)}:${canonical((v as Record<string, unknown>)[k])}`).join(",")}}`;
+		const obj = v as Record<string, unknown>;
+		const keys = Object.keys(obj).sort();
+		return `{${keys.map((k) => `${JSON.stringify(k)}:${canonical(obj[k])}`).join(",")}}`;
 	}
 	return JSON.stringify(v);
 }

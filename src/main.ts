@@ -30,7 +30,7 @@ export default class CodeRecallPlugin extends Plugin {
 	readonly execTimeoutMs = EXEC_TIMEOUT_MS;
 
 	async onload(): Promise<void> {
-		console.log("CodeRecall: loading plugin (build: review-1, langs: js/python/c++/java)");
+		console.log("CodeRecall: loading plugin (build: 1.0.2, langs: js/python/c++/java)");
 
 		this.store = new ReviewStore(() => this.saveData(this.serialize()));
 		const data = (await this.loadData()) as Partial<PersistShape> | null;

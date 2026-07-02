@@ -96,22 +96,24 @@ export class ReviewModal extends Modal {
 
 		const isPython = ["python", "py"].includes(card.lang.toLowerCase());
 		const checkBtn = controls.createEl("button", { text: "Run & check", cls: "mod-cta" });
-		checkBtn.addEventListener("click", async () => {
-			checkBtn.disabled = true;
-			checkBtn.setText("Running…");
-			if (isPython && !isPyodideReady()) {
-				new Notice("CodeRecall: loading Python runtime — first run downloads Pyodide (~10 MB).", 6000);
-			}
-			try {
-				const runner = getRunner(card.lang, this.plugin.runnerOptions());
-				this.outcome = await gradeAnswers(card, this.answers, runner, this.plugin.execTimeoutMs);
-				this.renderResults(results, controls);
-			} catch (e) {
-				new Notice(`CodeRecall: run failed — ${String(e)}`);
-			} finally {
-				checkBtn.disabled = false;
-				checkBtn.setText("Run & check");
-			}
+		checkBtn.addEventListener("click", () => {
+			void (async () => {
+				checkBtn.disabled = true;
+				checkBtn.setText("Running…");
+				if (isPython && !isPyodideReady()) {
+					new Notice("CodeRecall: loading Python runtime — first run downloads Pyodide (~10 MB).", 6000);
+				}
+				try {
+					const runner = getRunner(card.lang, this.plugin.runnerOptions());
+					this.outcome = await gradeAnswers(card, this.answers, runner, this.plugin.execTimeoutMs);
+					this.renderResults(results, controls);
+				} catch (e) {
+					new Notice(`CodeRecall: run failed — ${String(e)}`);
+				} finally {
+					checkBtn.disabled = false;
+					checkBtn.setText("Run & check");
+				}
+			})();
 		});
 
 		const revealBtn = controls.createEl("button", { text: "Reveal answer" });
@@ -162,7 +164,9 @@ export class ReviewModal extends Modal {
 		controls.empty();
 		const btn = (label: string, q: number, cta = false) => {
 			const b = controls.createEl("button", { text: label, cls: cta ? "mod-cta" : "" });
-			b.addEventListener("click", () => this.grade(q));
+			b.addEventListener("click", () => {
+				void this.grade(q);
+			});
 		};
 
 		if (autoQuality === null) {

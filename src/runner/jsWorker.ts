@@ -34,13 +34,13 @@ export const jsWorkerRunner: CodeRunner = {
 			const finish = (r: RawRun) => {
 				if (settled) return;
 				settled = true;
-				clearTimeout(timer);
+				window.clearTimeout(timer);
 				worker.terminate();
 				URL.revokeObjectURL(url);
 				resolve(r);
 			};
 
-			const timer = setTimeout(
+			const timer = window.setTimeout(
 				() => finish({ ok: false, timedOut: true, error: `Timed out after ${timeoutMs}ms` }),
 				timeoutMs,
 			);

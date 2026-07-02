@@ -34,6 +34,8 @@ export function runProcess(
 		const finish = (r: ProcResult) => {
 			if (settled) return;
 			settled = true;
+			// Node timers (not window.*): this spawns/kills child processes and
+			// also runs under Node in unit tests, where `window` is undefined.
 			clearTimeout(timer);
 			resolve(r);
 		};

@@ -1,6 +1,6 @@
 {
 	"name": "coderecall",
-	"version": "1.0.2",
+	"version": "1.0.3",
 	"description": "Anki + LeetCode for code: cloze deletions with auto-graded active recall and spaced repetition.",
 	"main": "main.js",
 	"scripts": {

@@ -34,12 +34,12 @@ export function runProcess(
 		const finish = (r: ProcResult) => {
 			if (settled) return;
 			settled = true;
-			// Node timers (not window.*): this spawns/kills child processes and
-			// also runs under Node in unit tests, where `window` is undefined.
-			clearTimeout(timer);
+			// globalThis.* works both in Obsidian's renderer and under Node (unit
+			// tests), where `window` is undefined; this timer only kills a process.
+			globalThis.clearTimeout(timer);
 			resolve(r);
 		};
-		const timer = setTimeout(() => {
+		const timer = globalThis.setTimeout(() => {
 			timedOut = true;
 			try {
 				child.kill("SIGKILL");
@@ -48,8 +48,8 @@ export function runProcess(
 			}
 		}, opts.timeoutMs);
 
-		child.stdout?.on("data", (d) => (stdout += d.toString()));
-		child.stderr?.on("data", (d) => (stderr += d.toString()));
+		child.stdout?.on("data", (d: Buffer) => (stdout += d.toString()));
+		child.stderr?.on("data", (d: Buffer) => (stderr += d.toString()));
 		child.on("error", (e) => finish({ code: null, stdout, stderr, timedOut, spawnError: e.message }));
 		child.on("close", (code) => finish({ code, stdout, stderr, timedOut }));
 

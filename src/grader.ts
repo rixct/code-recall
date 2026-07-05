@@ -55,6 +55,34 @@ export function compareOutputs(actual: string, expected: string): boolean {
 	return actual.trim() === expected.trim();
 }
 
+/**
+ * Normalize a snippet for text-grading: strip trailing whitespace on each line
+ * and trim blank edges, so incidental spacing differences don't fail a match
+ * while the actual code/text still has to line up.
+ */
+function normalizeForText(s: string): string {
+	return s.replace(/[ \t]+$/gm, "").trim();
+}
+
+/**
+ * Grade an attempt without running anything: compare each answer directly to
+ * the hidden cloze content. Used when the card has no tests (or no language to
+ * execute), so "just check what was written against what the user typed".
+ */
+export function gradeByText(card: Card, answers: string[]): GradeOutcome {
+	const program = buildProgram(card, answers);
+	const results: TestResult[] = card.clozes.map((cloze, i) => {
+		const answer = answers[i] ?? "";
+		return {
+			input: `{{c${cloze.group}}}`,
+			expected: cloze.content,
+			actual: answer,
+			pass: normalizeForText(answer) === normalizeForText(cloze.content),
+		};
+	});
+	return { program, entry: null, results, quality: resultToQuality(results), grading: "text" };
+}
+
 /** Map test results to an SM-2 quality score (0–5). */
 export function resultToQuality(results: TestResult[]): number {
 	if (results.length === 0) return 0;
@@ -75,6 +103,10 @@ export async function gradeAnswers(
 	runner: CodeRunner,
 	timeoutMs = 3000,
 ): Promise<GradeOutcome> {
+	// Nothing to execute — no tests to run against, or no language to run in.
+	// Fall back to comparing the user's answers with the hidden cloze content.
+	if (card.tests.length === 0 || card.lang === "") return gradeByText(card, answers);
+
 	const program = buildProgram(card, answers);
 	const mode = card.mode ?? defaultMode(card.lang);
 
@@ -89,7 +121,7 @@ export async function gradeAnswers(
 				pass: false,
 				error: "Could not determine the entry function — add `entry:` to the card.",
 			}));
-			return { program, entry: null, results, quality: 1 };
+			return { program, entry: null, results, quality: 1, grading: "tests" };
 		}
 	}
 
@@ -116,5 +148,5 @@ export async function gradeAnswers(
 		}
 	}
 
-	return { program, entry, results, quality: resultToQuality(results) };
+	return { program, entry, results, quality: resultToQuality(results), grading: "tests" };
 }

@@ -66,10 +66,12 @@ export class ReviewModal extends Modal {
 
 		contentEl.createEl("h2", { text: card.name ?? `Card ${this.index + 1}` });
 		const meta = contentEl.createEl("div", { cls: "cr-meta" });
-		meta.createEl("span", { cls: "cr-badge", text: card.lang });
+		if (card.lang) meta.createEl("span", { cls: "cr-badge", text: card.lang });
 		meta.createEl("span", { text: `${this.index + 1} / ${this.queue.length}` });
 
-		if (!isSupportedLang(card.lang)) {
+		// Only warn about no runner when the card actually has tests to run;
+		// tests-less (and language-less) cards are graded by text comparison.
+		if (card.lang && card.tests.length > 0 && !isSupportedLang(card.lang)) {
 			contentEl.createEl("p", {
 				cls: "cr-warn",
 				text: `"${card.lang}" can't be auto-run yet — reveal the answer and self-grade.`,
@@ -94,13 +96,16 @@ export class ReviewModal extends Modal {
 		const results = contentEl.createEl("div", { cls: "cr-results" });
 		const controls = contentEl.createEl("div", { cls: "cr-controls" });
 
+		// No tests / no language → grade by comparing text, so we just "check".
+		const textGraded = card.tests.length === 0 || !card.lang;
+		const checkLabel = textGraded ? "Check" : "Run & check";
 		const isPython = ["python", "py"].includes(card.lang.toLowerCase());
-		const checkBtn = controls.createEl("button", { text: "Run & check", cls: "mod-cta" });
+		const checkBtn = controls.createEl("button", { text: checkLabel, cls: "mod-cta" });
 		checkBtn.addEventListener("click", () => {
 			void (async () => {
 				checkBtn.disabled = true;
-				checkBtn.setText("Running…");
-				if (isPython && !isPyodideReady()) {
+				checkBtn.setText(textGraded ? "Checking…" : "Running…");
+				if (isPython && !textGraded && !isPyodideReady()) {
 					new Notice("CodeRecall: loading Python runtime — first run downloads Pyodide (~10 MB).", 6000);
 				}
 				try {
@@ -111,7 +116,7 @@ export class ReviewModal extends Modal {
 					new Notice(`CodeRecall: run failed — ${String(e)}`);
 				} finally {
 					checkBtn.disabled = false;
-					checkBtn.setText("Run & check");
+					checkBtn.setText(checkLabel);
 				}
 			})();
 		});
@@ -131,31 +136,37 @@ export class ReviewModal extends Modal {
 		const outcome = this.outcome;
 		if (!outcome) return;
 
-		if (outcome.entry === null && outcome.results.every((r) => r.error)) {
+		if (outcome.grading === "tests" && outcome.entry === null && outcome.results.every((r) => r.error)) {
 			container.createEl("p", { cls: "cr-warn", text: outcome.results[0]?.error ?? "Could not run." });
 		}
 
+		const isText = outcome.grading === "text";
 		for (const r of outcome.results) {
 			const row = container.createEl("div", { cls: `cr-test ${r.pass ? "cr-pass" : "cr-fail"}` });
 			const head = row.createEl("div", { cls: "cr-test-head" });
 			head.createEl("span", { cls: "cr-mark", text: r.pass ? "✓" : "✗" });
-			head.createEl("code", { text: `in: ${r.input}` });
+			head.createEl("code", { text: isText ? r.input : `in: ${r.input}` });
 			if (r.error) {
 				row.createEl("div", { cls: "cr-err", text: r.error });
 			} else {
 				row.createEl("div", { cls: "cr-kv", text: `expected: ${r.expected}` });
-				row.createEl("div", { cls: "cr-kv", text: `got:      ${r.actual}` });
+				row.createEl("div", { cls: "cr-kv", text: `${isText ? "you:     " : "got:     "}${r.actual}` });
 			}
 		}
 
 		if (outcome.results.length === 0) {
-			container.createEl("p", { cls: "cr-label", text: "No tests on this card — self-grade below." });
+			container.createEl("p", { cls: "cr-label", text: "Nothing to check on this card — self-grade below." });
 			this.renderGradeButtons(controls, null);
 			return;
 		}
 
 		const passed = outcome.results.filter((r) => r.pass).length;
-		container.createEl("p", { cls: "cr-summary", text: `${passed}/${outcome.results.length} tests passed` });
+		const unit = isText ? "blank" : "test";
+		const verb = isText ? "correct" : "passed";
+		container.createEl("p", {
+			cls: "cr-summary",
+			text: `${passed}/${outcome.results.length} ${unit}${outcome.results.length === 1 ? "" : "s"} ${verb}`,
+		});
 		this.renderGradeButtons(controls, outcome.quality);
 	}
 

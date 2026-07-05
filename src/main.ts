@@ -88,7 +88,7 @@ export default class CodeRecallPlugin extends Plugin {
 		}
 
 		const head = el.createEl("div", { cls: "cr-embed-head" });
-		head.createEl("span", { cls: "cr-badge", text: card.lang });
+		if (card.lang) head.createEl("span", { cls: "cr-badge", text: card.lang });
 		if (card.name) head.createEl("span", { cls: "cr-embed-name", text: card.name });
 		head.createEl("span", {
 			cls: "cr-embed-meta",

@@ -1,6 +1,6 @@
 import { execSync } from "child_process";
 import { describe, expect, it } from "vitest";
-import { buildProgram, compareOutputs, defaultMode, gradeAnswers, resultToQuality } from "./grader";
+import { buildProgram, compareOutputs, defaultMode, gradeAnswers, gradeByText, resultToQuality } from "./grader";
 import { cppRunner } from "./runner/cpp";
 import { makeNativeCppRunner } from "./runner/cppNative";
 import { localJsRunner } from "./runner/localJs";
@@ -107,6 +107,39 @@ describe("gradeAnswers (end-to-end via local JS eval)", () => {
 		const out = await gradeAnswers(twoSum, ["return nope.bad;"], localJsRunner);
 		expect(out.results[0].pass).toBe(false);
 		expect(out.results[0].error).toBeTruthy();
+	});
+});
+
+describe("text grading (no tests / no language)", () => {
+	it("passes when the answer matches the hidden content, ignoring edge whitespace", () => {
+		const card = jsCard("const answer = 42;", "42", []);
+		const out = gradeByText(card, [" 42 "]);
+		expect(out.grading).toBe("text");
+		expect(out.results[0].pass).toBe(true);
+		expect(out.quality).toBe(5);
+	});
+
+	it("fails when the answer differs from the hidden content", () => {
+		const card = jsCard("const answer = 42;", "42", []);
+		const out = gradeByText(card, ["43"]);
+		expect(out.results[0].pass).toBe(false);
+		expect(out.quality).toBe(1);
+	});
+
+	it("gradeAnswers falls back to text grading when a card has no tests", async () => {
+		const card = jsCard("const answer = 42;", "42", []);
+		const out = await gradeAnswers(card, ["42"], localJsRunner);
+		expect(out.grading).toBe("text");
+		expect(out.results[0].pass).toBe(true);
+	});
+
+	it("gradeAnswers text-grades a language-less card even if it has tests", async () => {
+		const card = jsCard("The capital of France is Paris.", "Paris", [{ input: "x", expected: "y" }]);
+		card.lang = "";
+		const out = await gradeAnswers(card, ["Paris"], localJsRunner);
+		expect(out.grading).toBe("text");
+		expect(out.results).toHaveLength(1);
+		expect(out.results[0].pass).toBe(true);
 	});
 });
 

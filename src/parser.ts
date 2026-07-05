@@ -181,10 +181,12 @@ export function parseCardBlock(
 		code = rawCode.endsWith("\n") ? rawCode.slice(0, -1) : rawCode;
 	}
 
-	const lang = header.lang;
-	if (typeof lang !== "string" || lang.trim() === "") {
-		return fail("Missing or invalid 'lang' (expected a non-empty string)");
+	// `lang` is optional: a card without it is graded by comparing the user's
+	// text to the hidden cloze content rather than by executing code.
+	if (header.lang !== undefined && (typeof header.lang !== "string" || header.lang.trim() === "")) {
+		return fail("'lang' must be a non-empty string when present (omit it entirely for a plain text card)");
 	}
+	const lang = typeof header.lang === "string" ? header.lang.trim() : "";
 
 	let cloze;
 	try {
@@ -224,7 +226,7 @@ export function parseCardBlock(
 	const card: Card = {
 		id,
 		filePath,
-		lang: lang.trim(),
+		lang,
 		name,
 		entry,
 		mode,

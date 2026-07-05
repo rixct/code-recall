@@ -128,10 +128,16 @@ describe("parseCards — error handling", () => {
 	const parseOne = (...body: string[]) =>
 		parseCards(doc("```coderecall", ...body, "```"), "e.md");
 
-	it("reports a missing lang", () => {
+	it("treats a missing lang as a text card (no error, empty lang)", () => {
 		const { cards, errors } = parseOne("code: |", "  {{c1::x}}");
+		expect(errors).toHaveLength(0);
+		expect(cards).toHaveLength(1);
+		expect(cards[0].lang).toBe("");
+	});
+
+	it("rejects a present-but-blank lang", () => {
+		const { cards, errors } = parseOne("lang: '  '", "code: |", "  {{c1::x}}");
 		expect(cards).toHaveLength(0);
-		expect(errors).toHaveLength(1);
 		expect(errors[0].message).toMatch(/lang/);
 	});
 

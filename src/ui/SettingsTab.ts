@@ -1,4 +1,5 @@
 import { type App, PluginSettingTab, Setting } from "obsidian";
+import { type LangSetting, setLangOverride, t } from "../i18n";
 import type CodeRecallPlugin from "../main";
 
 /** Settings UI for CodeRecall. */
@@ -12,11 +13,27 @@ export class CodeRecallSettingTab extends PluginSettingTab {
 
 	display(): void {
 		const { containerEl } = this;
+		const m = t();
 		containerEl.empty();
 
 		new Setting(containerEl)
-			.setName("Syntax highlighting")
-			.setDesc("Highlight code (JavaScript, Python, C++, Java, …) in the review view and in-note cards.")
+			.setName(m.setLangName)
+			.setDesc(m.setLangDesc)
+			.addDropdown((dropdown) =>
+				dropdown
+					.addOptions({ auto: m.langAuto, en: "English", ru: "Русский" })
+					.setValue(this.plugin.settings.language)
+					.onChange(async (value) => {
+						this.plugin.settings.language = value as LangSetting;
+						setLangOverride(this.plugin.settings.language);
+						await this.plugin.saveSettings();
+						this.display(); // re-render the tab in the newly chosen language
+					}),
+			);
+
+		new Setting(containerEl)
+			.setName(m.setSyntaxName)
+			.setDesc(m.setSyntaxDesc)
 			.addToggle((toggle) =>
 				toggle.setValue(this.plugin.settings.syntaxHighlight).onChange(async (value) => {
 					this.plugin.settings.syntaxHighlight = value;
@@ -24,15 +41,11 @@ export class CodeRecallSettingTab extends PluginSettingTab {
 				}),
 			);
 
-		new Setting(containerEl).setName("Execution").setHeading();
+		new Setting(containerEl).setName(m.setExecHeading).setHeading();
 
 		new Setting(containerEl)
-			.setName("Native execution (C++ / Java)")
-			.setDesc(
-				"Compile and run C++ and Java with your local toolchains (g++/clang++, JDK 11+). " +
-					"This runs real programs on your machine — only review notes you trust. " +
-					"When off, C++ uses the bundled JSCPP interpreter (no STL) and Java is disabled.",
-			)
+			.setName(m.setNativeName)
+			.setDesc(m.setNativeDesc)
 			.addToggle((toggle) =>
 				toggle.setValue(this.plugin.settings.nativeExecution).onChange(async (value) => {
 					this.plugin.settings.nativeExecution = value;
@@ -41,11 +54,11 @@ export class CodeRecallSettingTab extends PluginSettingTab {
 			);
 
 		new Setting(containerEl)
-			.setName("C++ compiler")
-			.setDesc("Command to use for C++. Leave empty to auto-detect (g++, then clang++).")
+			.setName(m.setCompilerName)
+			.setDesc(m.setCompilerDesc)
 			.addText((text) =>
 				text
-					.setPlaceholder("auto (g++ / clang++)")
+					.setPlaceholder(m.setCompilerPlaceholder)
 					.setValue(this.plugin.settings.cppCompiler)
 					.onChange(async (value) => {
 						this.plugin.settings.cppCompiler = value.trim();

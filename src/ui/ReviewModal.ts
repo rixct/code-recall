@@ -1,6 +1,7 @@
 import { Component, MarkdownRenderer, Modal, Notice } from "obsidian";
 import { gradeAnswers } from "../grader";
 import { codeFenceBlock } from "../highlight";
+import { t } from "../i18n";
 import { getRunner, isSupportedLang } from "../runner";
 import { isPyodideReady } from "../runner/pyodide";
 import { review } from "../scheduler";
@@ -64,19 +65,18 @@ export class ReviewModal extends Modal {
 		this.answers = card.clozes.map(() => "");
 		this.outcome = null;
 
-		contentEl.createEl("h2", { text: card.name ?? `Card ${this.index + 1}` });
+		contentEl.createEl("h2", { text: card.name ?? t().cardTitle(this.index + 1) });
 		const meta = contentEl.createEl("div", { cls: "cr-meta" });
-		meta.createEl("span", { cls: "cr-badge", text: card.lang });
+		if (card.lang) meta.createEl("span", { cls: "cr-badge", text: card.lang });
 		meta.createEl("span", { text: `${this.index + 1} / ${this.queue.length}` });
 
-		if (!isSupportedLang(card.lang)) {
-			contentEl.createEl("p", {
-				cls: "cr-warn",
-				text: `"${card.lang}" can't be auto-run yet — reveal the answer and self-grade.`,
-			});
+		// Only warn about no runner when the card actually has tests to run;
+		// tests-less (and language-less) cards are graded by text comparison.
+		if (card.lang && card.tests.length > 0 && !isSupportedLang(card.lang)) {
+			contentEl.createEl("p", { cls: "cr-warn", text: t().cantAutoRun(card.lang) });
 		}
 
-		contentEl.createEl("p", { cls: "cr-label", text: "Fill in the hidden part(s):" });
+		contentEl.createEl("p", { cls: "cr-label", text: t().fillHidden });
 		const codeBox = contentEl.createEl("div", { cls: "cr-code" });
 		void this.renderCode(codeBox, card.template, card.lang);
 
@@ -94,32 +94,35 @@ export class ReviewModal extends Modal {
 		const results = contentEl.createEl("div", { cls: "cr-results" });
 		const controls = contentEl.createEl("div", { cls: "cr-controls" });
 
+		// No tests / no language → grade by comparing text, so we just "check".
+		const textGraded = card.tests.length === 0 || !card.lang;
+		const checkLabel = textGraded ? t().check : t().runCheck;
 		const isPython = ["python", "py"].includes(card.lang.toLowerCase());
-		const checkBtn = controls.createEl("button", { text: "Run & check", cls: "mod-cta" });
+		const checkBtn = controls.createEl("button", { text: checkLabel, cls: "mod-cta" });
 		checkBtn.addEventListener("click", () => {
 			void (async () => {
 				checkBtn.disabled = true;
-				checkBtn.setText("Running…");
-				if (isPython && !isPyodideReady()) {
-					new Notice("CodeRecall: loading Python runtime — first run downloads Pyodide (~10 MB).", 6000);
+				checkBtn.setText(textGraded ? t().checking : t().running);
+				if (isPython && !textGraded && !isPyodideReady()) {
+					new Notice(t().loadingPython, 6000);
 				}
 				try {
 					const runner = getRunner(card.lang, this.plugin.runnerOptions());
 					this.outcome = await gradeAnswers(card, this.answers, runner, this.plugin.execTimeoutMs);
 					this.renderResults(results, controls);
 				} catch (e) {
-					new Notice(`CodeRecall: run failed — ${String(e)}`);
+					new Notice(t().runFailed(String(e)));
 				} finally {
 					checkBtn.disabled = false;
-					checkBtn.setText("Run & check");
+					checkBtn.setText(checkLabel);
 				}
 			})();
 		});
 
-		const revealBtn = controls.createEl("button", { text: "Reveal answer" });
+		const revealBtn = controls.createEl("button", { text: t().reveal });
 		revealBtn.addEventListener("click", () => {
 			results.empty();
-			results.createEl("p", { cls: "cr-label", text: "Reference solution:" });
+			results.createEl("p", { cls: "cr-label", text: t().referenceSolution });
 			const box = results.createEl("div", { cls: "cr-code" });
 			void this.renderCode(box, card.solution, card.lang);
 			this.renderGradeButtons(controls, null);
@@ -131,31 +134,33 @@ export class ReviewModal extends Modal {
 		const outcome = this.outcome;
 		if (!outcome) return;
 
-		if (outcome.entry === null && outcome.results.every((r) => r.error)) {
-			container.createEl("p", { cls: "cr-warn", text: outcome.results[0]?.error ?? "Could not run." });
+		const m = t();
+		if (outcome.grading === "tests" && outcome.entry === null && outcome.results.every((r) => r.error)) {
+			container.createEl("p", { cls: "cr-warn", text: outcome.results[0]?.error ?? m.couldNotRun });
 		}
 
+		const isText = outcome.grading === "text";
 		for (const r of outcome.results) {
 			const row = container.createEl("div", { cls: `cr-test ${r.pass ? "cr-pass" : "cr-fail"}` });
 			const head = row.createEl("div", { cls: "cr-test-head" });
 			head.createEl("span", { cls: "cr-mark", text: r.pass ? "✓" : "✗" });
-			head.createEl("code", { text: `in: ${r.input}` });
+			head.createEl("code", { text: isText ? r.input : m.inLabel(r.input) });
 			if (r.error) {
 				row.createEl("div", { cls: "cr-err", text: r.error });
 			} else {
-				row.createEl("div", { cls: "cr-kv", text: `expected: ${r.expected}` });
-				row.createEl("div", { cls: "cr-kv", text: `got:      ${r.actual}` });
+				row.createEl("div", { cls: "cr-kv", text: m.expectedLabel(r.expected) });
+				row.createEl("div", { cls: "cr-kv", text: isText ? m.youLabel(r.actual ?? "") : m.gotLabel(r.actual ?? "") });
 			}
 		}
 
 		if (outcome.results.length === 0) {
-			container.createEl("p", { cls: "cr-label", text: "No tests on this card — self-grade below." });
+			container.createEl("p", { cls: "cr-label", text: m.nothingToCheck });
 			this.renderGradeButtons(controls, null);
 			return;
 		}
 
 		const passed = outcome.results.filter((r) => r.pass).length;
-		container.createEl("p", { cls: "cr-summary", text: `${passed}/${outcome.results.length} tests passed` });
+		container.createEl("p", { cls: "cr-summary", text: m.summary(passed, outcome.results.length, isText) });
 		this.renderGradeButtons(controls, outcome.quality);
 	}
 
@@ -169,19 +174,20 @@ export class ReviewModal extends Modal {
 			});
 		};
 
+		const m = t();
 		if (autoQuality === null) {
-			btn("Again", 1);
-			btn("Hard", 3);
-			btn("Good", 4, true);
-			btn("Easy", 5);
+			btn(m.again, 1);
+			btn(m.hard, 3);
+			btn(m.good, 4, true);
+			btn(m.easy, 5);
 			return;
 		}
 
-		const verdict = autoQuality >= 5 ? "all passed" : autoQuality >= 3 ? "partial" : "failed";
-		controls.createEl("span", { cls: "cr-verdict", text: `Auto: ${verdict}` });
-		btn(`Continue (${verdict})`, autoQuality, true);
-		btn("Override: Again", 1);
-		btn("Override: Good", 4);
+		const verdict = autoQuality >= 5 ? m.verdictAllPassed : autoQuality >= 3 ? m.verdictPartial : m.verdictFailed;
+		controls.createEl("span", { cls: "cr-verdict", text: m.autoVerdict(verdict) });
+		btn(m.continueVerdict(verdict), autoQuality, true);
+		btn(m.overrideAgain, 1);
+		btn(m.overrideGood, 4);
 	}
 
 	private async grade(quality: number): Promise<void> {
@@ -198,9 +204,9 @@ export class ReviewModal extends Modal {
 	private renderDone(): void {
 		const { contentEl } = this;
 		contentEl.empty();
-		contentEl.createEl("h2", { text: "Review complete" });
-		contentEl.createEl("p", { text: `Reviewed ${this.reviewed} card(s).` });
-		const close = contentEl.createEl("button", { text: "Close", cls: "mod-cta" });
+		contentEl.createEl("h2", { text: t().reviewComplete });
+		contentEl.createEl("p", { text: t().reviewedCount(this.reviewed) });
+		const close = contentEl.createEl("button", { text: t().close, cls: "mod-cta" });
 		close.addEventListener("click", () => this.close());
 	}
 }

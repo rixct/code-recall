@@ -32,7 +32,8 @@ export interface Card {
 	id: string;
 	/** Source note path (empty when parsing a bare string). */
 	filePath: string;
-	/** Language identifier, e.g. `python`, `javascript`. */
+	/** Language identifier, e.g. `python`, `javascript`. Empty when the card
+	 * omits `lang` — such cards are graded by text comparison, not execution. */
 	lang: string;
 	/** Optional human-friendly name. */
 	name?: string;
@@ -143,6 +144,13 @@ export interface GradeOutcome {
 	results: TestResult[];
 	/** SM-2 quality 0–5 derived from the results. */
 	quality: number;
+	/**
+	 * How the attempt was graded:
+	 * - `tests`: the assembled program was run against the card's test cases.
+	 * - `text`: each answer was compared directly to the hidden cloze content
+	 *   (used when the card has no tests, or no runnable language).
+	 */
+	grading: "tests" | "text";
 }
 
 // ── Spaced repetition (Phase 2) ─────────────────────────────────────────────

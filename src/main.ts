@@ -1,5 +1,6 @@
 import { type MarkdownPostProcessorContext, MarkdownRenderChild, MarkdownRenderer, Notice, Plugin } from "obsidian";
 import { codeFenceBlock } from "./highlight";
+import { setLangOverride, t } from "./i18n";
 import { parseCards, parseSingleCard } from "./parser";
 import { isDue } from "./scheduler";
 import { type CodeRecallSettings, DEFAULT_SETTINGS } from "./settings";
@@ -35,6 +36,7 @@ export default class CodeRecallPlugin extends Plugin {
 		this.store = new ReviewStore(() => this.saveData(this.serialize()));
 		const data = (await this.loadData()) as Partial<PersistShape> | null;
 		this.settings = { ...DEFAULT_SETTINGS, ...(data?.settings ?? {}) };
+		setLangOverride(this.settings.language);
 		this.store.loadStates(data?.states);
 
 		this.addSettingTab(new CodeRecallSettingTab(this.app, this));
@@ -44,19 +46,19 @@ export default class CodeRecallPlugin extends Plugin {
 			this.renderCardEmbed(source, el, ctx);
 		});
 
-		this.addRibbonIcon("brain-circuit", "CodeRecall: review current note", () => {
+		this.addRibbonIcon("brain-circuit", t().ribbonReview, () => {
 			void this.reviewActiveNote();
 		});
 
 		this.addCommand({
 			id: "review-current-note",
-			name: "Review current note",
+			name: t().cmdReview,
 			callback: () => void this.reviewActiveNote(),
 		});
 
 		this.addCommand({
 			id: "scan-active-note",
-			name: "Scan active note for cards",
+			name: t().cmdScan,
 			callback: () => void this.scanActiveNote(),
 		});
 	}
@@ -82,17 +84,17 @@ export default class CodeRecallPlugin extends Plugin {
 		if (error || !card) {
 			el.createEl("div", {
 				cls: "coderecall-embed-error",
-				text: `CodeRecall — can't parse this card: ${error?.message ?? "invalid"}`,
+				text: t().embedParseError(error?.message ?? "invalid"),
 			});
 			return;
 		}
 
 		const head = el.createEl("div", { cls: "cr-embed-head" });
-		head.createEl("span", { cls: "cr-badge", text: card.lang });
+		if (card.lang) head.createEl("span", { cls: "cr-badge", text: card.lang });
 		if (card.name) head.createEl("span", { cls: "cr-embed-name", text: card.name });
 		head.createEl("span", {
 			cls: "cr-embed-meta",
-			text: `${card.clozes.length} cloze · ${card.tests.length} test(s)`,
+			text: t().embedMeta(card.clozes.length, card.tests.length),
 		});
 
 		// The code the user wrote (with {{cN::…}} markers), syntax-highlighted.
@@ -115,7 +117,7 @@ export default class CodeRecallPlugin extends Plugin {
 	private async scanActiveNote(): Promise<void> {
 		const cards = await this.cardsInActiveNote();
 		if (cards === null) return;
-		new Notice(`CodeRecall: found ${cards.length} card(s) in this note`);
+		new Notice(t().foundCards(cards.length));
 	}
 
 	/** Open a review session for the due cards in the active note. */
@@ -123,14 +125,14 @@ export default class CodeRecallPlugin extends Plugin {
 		const cards = await this.cardsInActiveNote();
 		if (cards === null) return;
 		if (cards.length === 0) {
-			new Notice("CodeRecall: no cards in this note");
+			new Notice(t().noCards);
 			return;
 		}
 
 		const now = Date.now();
 		let queue = cards.filter((c) => isDue(this.store.get(c.id, now), now));
 		if (queue.length === 0) {
-			new Notice("CodeRecall: nothing due — reviewing all cards");
+			new Notice(t().nothingDue);
 			queue = cards;
 		}
 
@@ -141,7 +143,7 @@ export default class CodeRecallPlugin extends Plugin {
 	private async cardsInActiveNote(): Promise<Card[] | null> {
 		const file = this.app.workspace.getActiveFile();
 		if (!file) {
-			new Notice("CodeRecall: no active note");
+			new Notice(t().noActiveNote);
 			return null;
 		}
 		const content = await this.app.vault.read(file);
@@ -149,11 +151,7 @@ export default class CodeRecallPlugin extends Plugin {
 		if (errors.length > 0) {
 			console.warn("CodeRecall: parse errors", errors);
 			const first = errors[0];
-			new Notice(
-				`CodeRecall: ${errors.length} card(s) failed to parse.\n` +
-					`Line ${first.lineStart + 1}: ${first.message}`,
-				10000,
-			);
+			new Notice(t().parseFailed(errors.length, first.lineStart + 1, first.message), 10000);
 		}
 		return cards;
 	}

@@ -119,6 +119,13 @@ describe("text grading (no tests / no language)", () => {
 		expect(out.quality).toBe(5);
 	});
 
+	it("ignores internal spacing: print(x+y) matches a hidden print(x + y)", () => {
+		const card = jsCard("f = lambda x, y: print(x + y)", "print(x + y)", []);
+		expect(gradeByText(card, ["print(x+y)"]).results[0].pass).toBe(true);
+		expect(gradeByText(card, ["print( x  +y )"]).results[0].pass).toBe(true);
+		expect(gradeByText(card, ["print(x - y)"]).results[0].pass).toBe(false);
+	});
+
 	it("fails when the answer differs from the hidden content", () => {
 		const card = jsCard("const answer = 42;", "42", []);
 		const out = gradeByText(card, ["43"]);

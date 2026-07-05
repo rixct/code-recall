@@ -56,12 +56,12 @@ export function compareOutputs(actual: string, expected: string): boolean {
 }
 
 /**
- * Normalize a snippet for text-grading: strip trailing whitespace on each line
- * and trim blank edges, so incidental spacing differences don't fail a match
- * while the actual code/text still has to line up.
+ * Normalize a snippet for text-grading by removing all whitespace, so spacing
+ * never decides correctness: `print(x + y)` and `print(x+y)` both match a
+ * hidden `print(x + y)`. Only the non-whitespace characters have to line up.
  */
 function normalizeForText(s: string): string {
-	return s.replace(/[ \t]+$/gm, "").trim();
+	return s.replace(/\s+/g, "");
 }
 
 /**
